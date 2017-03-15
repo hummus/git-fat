@@ -44,7 +44,21 @@ except ImportError:
         return output
     subprocess.check_output = backport_check_output
 
+    # also monkeypatch python2.6 subprocess.Popen to have a 2.7 default behavior
+    # some `subprocess` PIPE sequences rely on behavior enabled by `close_fds=True`
+    # > https://docs.python.org/2/library/subprocess.html
+    # > If close_fds is true, all file descriptors except 0, 1 and 2 will be closed before the
+    # child process is executed.
+    subprocess._Popen = subprocess.Popen
+    def BackportPopen(*args, **kwargs):
+        if 'close_fds' not in kwargs:
+            kwargs['close_fds'] = True
+
+        return subprocess._Popen(*args, **kwargs)
+    subprocess.Popen = BackportPopen
+
 BLOCK_SIZE = 4096
+
 
 def verbose_stderr(*args, **kwargs):
     return print(*args, file=sys.stderr, **kwargs)
